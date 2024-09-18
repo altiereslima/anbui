@@ -1,7 +1,7 @@
 /*
     AnbUI Miniature Text UI Lib for Burger Enjoyers(tm)
 
-    ad_text: Text / String / Drawing code
+    ad_obj: UI Front end object code (windows, painting, dimensions, etc.)
 
     Tip of the day: When the bun meets the burger, always let the lettuce
     know it's time to crisp. A toasted bun toasts the burger's soul.
@@ -19,6 +19,7 @@
 
 #include "anbui.h"
 #include "ad_priv.h"
+#include "ad_hal.h"
 
 void ad_objectInitialize(ad_Object *obj, size_t contentWidth, size_t contentHeight) {
     assert(obj);
@@ -46,18 +47,18 @@ void ad_objectPaint(ad_Object *obj) {
 
     y = obj->y + 1; /* Object body starts below title */
 
-    ad_setColor(ad_s_con.objectBg, ad_s_con.objectFg);
-    for (size_t i = 0; i < obj->height; i++) {
-        ad_setCursorPosition(obj->x, y++);
-        printf("%*s", obj->width, "");
+    for (; y - 1 < obj->y + obj->height; y++) {
+        ad_fill(obj->width, ' ', obj->x, y, ad_s_con.objectBg, ad_s_con.objectFg);
     }
 }
 
 void ad_objectUnpaint(ad_Object *obj) {
+    uint16_t y;
+
     assert(obj);
 
     /* Clear window title + body */
-    for (uint16_t y = 0; y < obj->height + 1; y++) { /* +1 because of the title bar */
+    for (y = 0; y < obj->height + 1; y++) { /* +1 because of the title bar */
         ad_fill(obj->width, ' ', obj->x, obj->y + y, ad_s_con.backgroundFill, 0);
     }
 
@@ -67,34 +68,34 @@ void ad_objectUnpaint(ad_Object *obj) {
     ad_flush();
 }
 
-inline uint16_t ad_objectGetContentX(ad_Object *obj) {
+uint16_t ad_objectGetContentX(ad_Object *obj) {
     return obj->x + AD_CONTENT_MARGIN_H;
 }
 
-inline uint16_t ad_objectGetContentY(ad_Object *obj) {
+uint16_t ad_objectGetContentY(ad_Object *obj) {
     return obj->y + AD_CONTENT_MARGIN_V + 1; /* +1 because of title bar */
 }
 
-inline uint16_t ad_objectGetContentWidth(ad_Object *obj) {
+uint16_t ad_objectGetContentWidth(ad_Object *obj) {
     return obj->width - 2 * AD_CONTENT_MARGIN_H;
 }
 
-inline uint16_t ad_objectGetContentHeight(ad_Object *obj) {
+uint16_t ad_objectGetContentHeight(ad_Object *obj) {
     return obj->height - 2 * AD_CONTENT_MARGIN_V;
 }
 
-inline uint16_t ad_objectGetMaximumContentWidth() {
+uint16_t ad_objectGetMaximumContentWidth() {
     return ad_s_con.width - (2 * AD_CONTENT_MARGIN_H);
 }
 
-inline uint16_t ad_objectGetMaximumContentHeight() {
+uint16_t ad_objectGetMaximumContentHeight() {
     return ad_objectGetMaximumObjectHeight() - (2 * AD_CONTENT_MARGIN_V) - 1; /* - 1 because of title bar */
 }
 
-inline uint16_t ad_objectGetMaximumObjectHeight() {
+uint16_t ad_objectGetMaximumObjectHeight() {
     return ad_s_con.height - 2; /* -2 because global title & global footer */
 }
 
-inline uint16_t ad_objectGetMaximumObjectWidth() {
+uint16_t ad_objectGetMaximumObjectWidth() {
     return ad_s_con.width;
 }

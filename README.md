@@ -20,13 +20,35 @@ As I said, minimal code & ease of use is the focus here.
 
 ## Limitations
 
-* Currently the screen size is fixed to 80x25 (aka. VGA Text Mode) displays, because that's what I made the library for. Sorry! :(
-
 * Probably currently not very thread-safe (at all (please don't))
+
+# Platforms
+
+## MS-DOS
+
+### Open Watcom (`makefile.wcd`)
+
+  Build test application with `wmake -f makefile.wcd`
+
+### Microsoft C 7.00 (`makefile.c7d`)
+
+  Build test application with `nmake makefile.c7d`
+
+## Linux
+
+### GCC
+
+  `gcc -D_ANBUI_TEST_ -O3 -s -Wall -Wextra -pedantic -Werror -oanbui_test pl_linux.c ad_ui.c ad_obj.c ad_text.c anbui.c ad_test.c`
+
+## Windows
+
+### MinGW
+
+  `gcc -D_ANBUI_TEST_ -O3 -s -Wall -Wextra -pedantic -Werror -oanbui_win.exe pl_win32.c ad_ui.c ad_obj.c ad_text.c anbui.c ad_test.c`
 
 ## API Reference
 
-Coming when I'm bored! Please check the test code in anbui.c for now :D
+Please look at [`anbui.h`](anbui.h).
 
 ## What's with the name...?
 

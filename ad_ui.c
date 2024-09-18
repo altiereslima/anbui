@@ -20,6 +20,9 @@
 
 #include "anbui.h"
 #include "ad_priv.h"
+#include "ad_hal.h"
+
+static void ad_textFileBoxDestroy(ad_TextFileBox *tfb);
 
 static void ad_menuSelectItemAndDraw(ad_Menu *menu, size_t newSelection) {
     assert(menu);
@@ -58,10 +61,13 @@ static bool ad_menuPaint(ad_Menu *menu) {
     menu->itemX = ad_objectGetContentX(&menu->object);
     menu->itemY = ad_objectGetContentY(&menu->object);
 
+    /* Print prompt if it exists */
     if (menu->prompt) {   
         ad_displayTextElementArray(menu->itemX, menu->itemY, ad_objectGetContentWidth(&menu->object), menu->prompt->lineCount, menu->prompt->lines);
         menu->itemY += 1 + menu->prompt->lineCount;
     }
+
+    /* Print the menu items */
 
     menu->itemX += AD_MENU_ITEM_PADDING_H;
 
@@ -69,7 +75,6 @@ static bool ad_menuPaint(ad_Menu *menu) {
 
     ad_menuSelectItemAndDraw(menu, 0);
 
-    ad_flush();
     return true;
 }
 
@@ -104,20 +109,20 @@ inline size_t ad_menuGetItemCount(ad_Menu *menu) {
 }
 
 int32_t ad_menuExecute(ad_Menu *menu) {
-    int ch;
+    uint32_t ch;
 
     ad_menuPaint(menu);
 
     while (true) {
         ch = ad_getKey();
 
-        if          (ch == AD_CURSOR_U) {
+        if          (ch == AD_KEY_UP) {
             ad_menuSelectItemAndDraw(menu, (menu->currentSelection > 0) ? menu->currentSelection - 1 : menu->itemCount - 1);
-        } else if   (ch == AD_CURSOR_D) {
+        } else if   (ch == AD_KEY_DOWN) {
             ad_menuSelectItemAndDraw(menu, (menu->currentSelection + 1) % menu->itemCount);
         } else if   (ch == AD_KEY_ENTER) {
             return menu->currentSelection;
-        } else if   (menu->cancelable && (ch == AD_KEY_ESCAPE || ch == AD_KEY_ESCAPE2)) {
+        } else if   (menu->cancelable && (ch == AD_KEY_ESC)) {
             return -1;
         } 
 #if DEBUG
@@ -139,7 +144,8 @@ void ad_menuDestroy(ad_Menu *menu) {
 
 static int32_t ad_menuExecuteDirectlyInternal(const char *title, bool cancelable, size_t optionCount, const char *options[], const char *prompt) {
     ad_Menu        *menu = NULL;
-    int             ret  = 0;
+    int32_t         ret  = 0;
+    size_t          idx;
 
     AD_RETURN_ON_NULL(options, AD_ERROR);
     AD_RETURN_ON_NULL(prompt, AD_ERROR);
@@ -147,8 +153,8 @@ static int32_t ad_menuExecuteDirectlyInternal(const char *title, bool cancelable
     menu = ad_menuCreate(title, prompt, cancelable);
     AD_RETURN_ON_NULL(menu, AD_ERROR);
 
-    for (size_t i = 0; i < optionCount; i++) {
-        ad_menuAddItemFormatted(menu, "%s", options[i]);
+    for (idx = 0; idx < optionCount; idx++) {
+        ad_menuAddItemFormatted(menu, "%s", options[idx]);
     }
 
     ret = ad_menuExecute(menu);
@@ -157,30 +163,32 @@ static int32_t ad_menuExecuteDirectlyInternal(const char *title, bool cancelable
     return ret;
 }
 
-#define _ad_vsnprintfWrapper(dst, n, fmt, args)         \
-    va_start(args, promptFormat);                       \
-    vsnprintf(dst, n, fmt, args);                       \
+int32_t ad_menuExecuteDirectly(const char *title, bool cancelable, size_t optionCount, const char *options[], const char *promptFormat, ...) {
+    char tmpPrompt[1024];
+    va_list args;
+    va_start(args, promptFormat);
+    vsnprintf(tmpPrompt, sizeof(tmpPrompt), promptFormat, args);
     va_end(args);
-
-#define _ad_genericFormattedPromptFunctionStart(tmpBufferName, fmt) \
-    char tmpBufferName[1024]; va_list args;                         \
-    AD_RETURN_ON_NULL(fmt, AD_ERROR);                               \
-    _ad_vsnprintfWrapper(tmpBufferName, sizeof(tmpBufferName), fmt, args);
-
-inline int32_t ad_menuExecuteDirectly(const char *title, bool cancelable, size_t optionCount, const char *options[], const char *promptFormat, ...) {
-    _ad_genericFormattedPromptFunctionStart(tmpPrompt, promptFormat);
     return ad_menuExecuteDirectlyInternal(title, cancelable, optionCount, options, tmpPrompt);
 }
 
-inline int32_t ad_yesNoBox(const char *title, bool cancelable, const char *promptFormat, ...) {
+int32_t ad_yesNoBox(const char *title, bool cancelable, const char *promptFormat, ...) {
     const char *options[] = {"Yes", "No"};
-    _ad_genericFormattedPromptFunctionStart(tmpPrompt, promptFormat);
+    char tmpPrompt[1024];
+    va_list args;
+    va_start(args, promptFormat);
+    vsnprintf(tmpPrompt, sizeof(tmpPrompt), promptFormat, args);
+    va_end(args);
     return ad_menuExecuteDirectlyInternal(title, cancelable, AD_ARRAY_SIZE(options), options, tmpPrompt);
 }
 
-inline int32_t ad_okBox(const char *title, bool cancelable, const char *promptFormat, ...) {
+int32_t ad_okBox(const char *title, bool cancelable, const char *promptFormat, ...) {
     const char *options[] = {"OK"};
-    _ad_genericFormattedPromptFunctionStart(tmpPrompt, promptFormat);
+    char tmpPrompt[1024];
+    va_list args;
+    va_start(args, promptFormat);
+    vsnprintf(tmpPrompt, sizeof(tmpPrompt), promptFormat, args);
+    va_end(args);
     return ad_menuExecuteDirectlyInternal(title, cancelable, AD_ARRAY_SIZE(options), options, tmpPrompt);
 }
 
@@ -213,10 +221,12 @@ static bool ad_progressBoxPaint(ad_ProgressBox *pb) {
     }
 
     /* Draw the actual bar (empty for now, of course) */
-    ad_fill(pb->boxWidth, ' ', pb->boxX, pb->boxY, COLOR_GRY, 0);
+    ad_fill(pb->boxWidth, ' ', pb->boxX, pb->boxY, COLOR_GRAY, 0);
 
     ad_setColor(ad_s_con.progressFill, 0);
     ad_setCursorPosition(pb->boxX, pb->boxY);
+
+    ad_flush();
 
     return true;
 }
@@ -244,7 +254,9 @@ void ad_progressBoxUpdate(ad_ProgressBox *pb, uint32_t progress) {
     uint16_t newX;
     uint16_t newPaintLength;
 
-    AD_RETURN_ON_NULL(pb,);
+    if (pb == NULL) {
+        return;
+    }
 
     /*  round / lround for values > 1 in MUSL gets clipped to 1.0 ?????? am I stupid?
         Anyway this hack is here until I get some sleep.. */
@@ -257,9 +269,7 @@ void ad_progressBoxUpdate(ad_ProgressBox *pb, uint32_t progress) {
     newPaintLength = newX - pb->currentX;
     pb->currentX = newX;
 
-    for (size_t i = 0; i < newPaintLength; i++) {
-        putc(' ', stdout);
-    }
+    ad_putChar(' ', newPaintLength);
 
     ad_flush();
 }
@@ -273,7 +283,7 @@ void ad_progressBoxDestroy(ad_ProgressBox *pb) {
 }
 
 static inline void ad_textFileBoxRedrawLines(ad_TextFileBox *tfb) {
-    ad_displayTextElementArray(tfb->textX, tfb->textY, tfb->lineWidth, tfb->linesOnScreen, &tfb->lines->lines[tfb->currentIndex]);
+    ad_displayTextElementArray(tfb->textX, tfb->textY, (size_t) tfb->lineWidth, (size_t) tfb->linesOnScreen, &tfb->lines->lines[tfb->currentIndex]);
 }
 
 static bool ad_textFileBoxPaint(ad_TextFileBox *tfb) {
@@ -299,16 +309,17 @@ static bool ad_textFileBoxPaint(ad_TextFileBox *tfb) {
     return true;    
 }
 
-ad_TextFileBox *ad_textFileBoxCreate(const char *title, const char *fileName) {
+static ad_TextFileBox *ad_textFileBoxCreate(const char *title, const char *fileName) {
     ad_TextFileBox *tfb         = NULL;
     FILE           *inFile      = NULL;
     long            fileSize    = 0;
     char           *fileBuffer  = NULL;
+    size_t          bytesRead   = 0;
     
     AD_RETURN_ON_NULL(title, NULL);
     AD_RETURN_ON_NULL(fileName, NULL);
 
-    inFile = fopen(fileName, "r");
+    inFile = fopen(fileName, "rb");
 
     AD_RETURN_ON_NULL(inFile, NULL);
 
@@ -327,11 +338,15 @@ ad_TextFileBox *ad_textFileBoxCreate(const char *title, const char *fileName) {
     fileBuffer = malloc((size_t) fileSize + 1);
     fileBuffer[fileSize] = 0x00;
 
-    if (fread(fileBuffer, 1, (size_t) fileSize, inFile) < (size_t) fileSize) {
-        goto error;
+    while (bytesRead < (size_t) fileSize) {
+        bytesRead += fread(&fileBuffer[bytesRead], 1, (size_t) fileSize - bytesRead, inFile);
+        if (ferror(inFile)) {
+            goto error;
+        }
     }
 
     fclose(inFile);
+    inFile = NULL;
 
     /* OK now we can actually do something with this */
 
@@ -374,8 +389,8 @@ static void ad_textFileBoxMove(ad_TextFileBox *tpb, int32_t positionsToMoveV) {
     ad_textFileBoxRedrawLines(tpb);
 }
 
-int32_t ad_textFileBoxExecute(ad_TextFileBox *tfb) {
-    int ch;
+static int32_t ad_textFileBoxExecute(ad_TextFileBox *tfb) {
+    uint32_t ch;
 
     AD_RETURN_ON_NULL(tfb, AD_ERROR);
 
@@ -384,13 +399,13 @@ int32_t ad_textFileBoxExecute(ad_TextFileBox *tfb) {
     while (true) {
         ch = ad_getKey();
 
-        if          (ch == AD_CURSOR_U) {
+        if          (ch == AD_KEY_UP) {
             ad_textFileBoxMove(tfb, -1);
-        } else if   (ch == AD_CURSOR_D) {
+        } else if   (ch == AD_KEY_DOWN) {
             ad_textFileBoxMove(tfb, +1);
-        } else if   (ch == AD_PAGE_U) {
+        } else if   (ch == AD_KEY_PGUP) {
             ad_textFileBoxMove(tfb, -tfb->linesOnScreen);
-        } else if   (ch == AD_PAGE_D) {
+        } else if   (ch == AD_KEY_PGDN) {
             ad_textFileBoxMove(tfb, +tfb->linesOnScreen);
         } else if   (ch == AD_KEY_ENTER) {
             return 0;
@@ -407,7 +422,7 @@ int32_t ad_textFileBoxExecute(ad_TextFileBox *tfb) {
     return 0;
 }
 
-void ad_textFileBoxDestroy(ad_TextFileBox *tfb) {
+static void ad_textFileBoxDestroy(ad_TextFileBox *tfb) {
     if (tfb) {
         ad_multiLineTextDestroy(tfb->lines);
         ad_objectUnpaint(&tfb->object);
@@ -415,18 +430,29 @@ void ad_textFileBoxDestroy(ad_TextFileBox *tfb) {
     }
 }
 
-inline void ad_textFileBoxDirect(const char *title, const char *fileName) {
+int32_t ad_textFileBox(const char *title, const char *fileName) {
     ad_TextFileBox *tfb = ad_textFileBoxCreate(title, fileName);
-    ad_textFileBoxExecute(tfb);
+    int ret;
+    AD_RETURN_ON_NULL(tfb, AD_ERROR);
+    ret = ad_textFileBoxExecute(tfb);
     ad_textFileBoxDestroy(tfb);
+    return ret;
 }
 
+#if defined(_POSIX_C_SOURCE) || defined(popen)
+
 static void ad_commandBoxRedraw(const ad_TextElement *lines, size_t lineCount, uint16_t contentWidth, size_t index, uint16_t x, uint16_t y) {
-    for (size_t i = 0; i < lineCount; i++) {
-        ad_displayStringCropped(lines[index % lineCount].text, x, y + i, contentWidth, ad_s_con.objectBg, ad_s_con.objectFg);
+    size_t curLine;
+
+    for (curLine = 0; curLine < lineCount; curLine++) {
+        ad_displayStringCropped(lines[index % lineCount].text, x, y + curLine, contentWidth, ad_s_con.objectBg, ad_s_con.objectFg);
         index++;
     }
 }
+
+#ifndef WEXITSTATUS
+#define WEXITSTATUS(x) ((x) & 0xff)
+#endif
 
 int32_t ad_runCommandBox(const char *title, const char *command) {
     ad_Object       obj;
@@ -474,3 +500,22 @@ int32_t ad_runCommandBox(const char *title, const char *command) {
 
     return WEXITSTATUS(pclose(pipe));
 }
+#else
+int32_t ad_runCommandBox(const char *title, const char *command) {
+    AD_UNUSED_PARAMETER(title);
+    AD_UNUSED_PARAMETER(command);
+    return -1;
+}
+#endif
+
+void ad_setFooterText(const char *footer) {
+    if (footer != NULL) {
+        ad_clearFooter();
+        ad_printCenteredText(footer, 0, ad_s_con.height - 1, ad_s_con.width, ad_s_con.footerBg, ad_s_con.footerFg);
+    }
+}
+
+void ad_clearFooter(void) {
+    ad_fill(ad_s_con.width, ' ', 0, ad_s_con.height - 1, ad_s_con.footerBg, ad_s_con.footerFg);
+}
+

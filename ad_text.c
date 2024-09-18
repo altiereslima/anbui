@@ -17,10 +17,7 @@
 
 #include "anbui.h"
 #include "ad_priv.h"
-
-#define AD_SCRATCH_BUF_SIZE 256
-
-static char ad_s_scratchBuf[AD_SCRATCH_BUF_SIZE];
+#include "ad_hal.h"
 
 static inline void ad_textElementAssignWithLength(ad_TextElement *el, const char *text, size_t length) {
     length = AD_MIN(AD_TEXT_ELEMENT_SIZE-1, length);
@@ -28,7 +25,7 @@ static inline void ad_textElementAssignWithLength(ad_TextElement *el, const char
     el->text[length] = 0x00;
 }
 
-inline void ad_textElementAssign(ad_TextElement *el, const char *text) {
+void ad_textElementAssign(ad_TextElement *el, const char *text) {
     memcpy(el->text, text, AD_TEXT_ELEMENT_SIZE-1);
     el->text[AD_TEXT_ELEMENT_SIZE-1] = 0x00;
 }
@@ -46,13 +43,15 @@ ad_TextElement* ad_textElementArrayResize(ad_TextElement *ptr, size_t newCount) 
     return ptr;
 }
 
-inline size_t ad_textElementArrayGetLongestLength(size_t items, ad_TextElement *elements) {
+size_t ad_textElementArrayGetLongestLength(size_t items, ad_TextElement *elements) {
     size_t max = 0;
+    size_t curLen;
+    size_t curItem;
 
     AD_RETURN_ON_NULL(elements, 0);
 
-    for (size_t i = 0; i < items; i++) {
-        size_t curLen = strlen(elements[i].text);
+    for (curItem = 0; curItem < items; curItem++) {
+        curLen = strlen(elements[curItem].text);
         if (curLen > max) max = curLen;
     }
 
@@ -122,28 +121,29 @@ void ad_multiLineTextDestroy(ad_MultiLineText *obj) {
 
 void ad_displayStringCropped(const char *str, uint16_t x, uint16_t y, size_t maxLen, uint8_t bg, uint8_t fg) {
     size_t strLen = strlen(str);
+    size_t paddingRight = maxLen - strLen;
 
     ad_setColor(bg, fg);
     ad_setCursorPosition(x, y);
 
     if (strLen > maxLen) {
-        memcpy(ad_s_scratchBuf, str, maxLen - 3);
-        memcpy(ad_s_scratchBuf + maxLen - 3, "...", 3);
+        maxLen -= 3;
+        while (maxLen--) {
+            ad_putChar(*str++, 1);
+        }
+        ad_putString("...");
     } else {
-        memset(ad_s_scratchBuf + strLen, ' ', maxLen - strLen);
-        memcpy(ad_s_scratchBuf, str, strLen);
+        ad_putString(str);
+        ad_putChar(' ', paddingRight);
     }
-
-    ad_s_scratchBuf[maxLen] = 0x00;
-    printf ("%s", ad_s_scratchBuf);
 }
 
 void ad_displayTextElementArray(uint16_t x, uint16_t y, size_t maximumWidth, size_t count, ad_TextElement *elements) {
-    for (size_t i = 0; i < count; i++) {
+    size_t i;
+    for (i = 0; i < count; i++) {
         ad_displayStringCropped(elements[i].text, x, y, maximumWidth, ad_s_con.objectBg, ad_s_con.objectFg);
         y++;
     }
-
     ad_flush();
 }
 
@@ -153,28 +153,29 @@ void ad_printCenteredText(const char* str, uint16_t x, uint16_t y, uint16_t w, u
     uint16_t    paddingR;
 
     if (strLen < w) {
-        /* Some optimization here.... sorry for the unreadable mess! */
+        ad_setCursorPosition(x, y);
+        ad_setColor(colBg, colFg);
+
         paddingL = ad_getPadding(w, strLen);
         paddingR = w - strLen - paddingL;
-        printf( "\33[%u;%uH"
-                "\33[%u;%um"
-                "%*s%s%*s",
-                y + 1, x + 1,
-                colBg + 40, colFg + 30,
-                paddingL, "", str, paddingR, "" );
+
+        ad_putChar(' ', paddingL);
+        ad_putString(str);
+        ad_putChar(' ', paddingR);
     } else {
-        ad_displayStringCropped(str, 0, y, ad_s_con.width, colBg, colFg);
+        ad_displayStringCropped(str, x, y, w, colBg, colFg);
     }
+
     ad_flush();
 }
 
 
 void ad_drawBackground(const char *title) {
-    printf(CL_BLD);
-    ad_printCenteredText(title, 0, 0, ad_s_con.width, ad_s_con.headerBg, ad_s_con.headerFg);
-    printf(CL_RST);
+    size_t y;
 
-    for (size_t y = 1; y < ad_s_con.height; y++) {
+    ad_printCenteredText(title, 0, 0, ad_s_con.width, ad_s_con.headerBg, ad_s_con.headerFg);
+
+    for (y = 1; y < ad_s_con.height; y++) {
         ad_fill(ad_s_con.width, ' ', 0, y, ad_s_con.backgroundFill, 0);
     }
 
@@ -182,28 +183,11 @@ void ad_drawBackground(const char *title) {
 }
 
 void ad_fill(size_t length, char fill, uint16_t x, uint16_t y, uint8_t colBg, uint8_t colFg) {
-    length = AD_MIN(AD_SCRATCH_BUF_SIZE, length);
     ad_setCursorPosition(x, y);
     ad_setColor(colBg, colFg);
-    memset(ad_s_scratchBuf, fill, length);
-    ad_s_scratchBuf[length] = 0x00;
-    printf("%s", ad_s_scratchBuf);
+    ad_putChar(fill, length);
 }
 
-
-inline void ad_setColor(uint8_t bg, uint8_t fg) {
-    printf("\33[%u;%um", bg + 40, fg + 30);
-}
-
-inline void ad_flush(void) { 
-    fflush(stdout); 
-}
-
-inline void ad_setCursorPosition(uint16_t x, uint16_t y) { 
-    printf("\033[%u;%uH", (y + 1), (x + 1));
-}
-
-inline size_t ad_getPadding(size_t totalLength, size_t lengthToPad) {
+size_t ad_getPadding(size_t totalLength, size_t lengthToPad) {
     return (totalLength - lengthToPad) / 2;
 }
-

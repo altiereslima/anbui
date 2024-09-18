@@ -1,0 +1,17 @@
+CC = wcc
+AS = wasm
+LD = wlink
+CL = wcl
+
+CFLAGS = -0 -bt=dos -wx -we
+LDFLAGS = SYSTEM DOS
+
+OBJ = AD_OBJ.OBJ AD_TEXT.OBJ AD_UI.OBJ PL_DOS.OBJ ANBUI.OBJ AD_TEST.OBJ
+
+all : ANBUITST.EXE
+
+ANBUITST.EXE : $(OBJ)
+    $(LD) $(LDFLAGS) NAME ANBUITST FILE {$(OBJ)}
+
+.c.obj : .AUTODEPEND
+        $(CC) $(CFLAGS) -fo=$@ $<

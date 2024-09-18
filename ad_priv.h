@@ -15,62 +15,41 @@
 #ifndef _AD_PRIV_H_
 #define _AD_PRIV_H_
 
-// Bold
-#define CL_BLD "\033[1m"
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-#define CL_HID "\033[?25l"
-#define CL_SHW "\033[?25h"
-
-// Reset
-#define CL_RST "\033[0m"
-
-// Foreground colors
-#define FG_BLK "\033[30m"
-#define FG_RED "\033[31m"
-#define FG_GRN "\033[32m"
-#define FG_YEL "\033[33m"
-#define FG_BLU "\033[34m"
-#define FG_MAG "\033[35m"
-#define FG_CYN "\033[36m"
-#define FG_WHT "\033[37m"
-
-// Background Colors
-#define BG_BLK "\033[40m"
-#define BG_RED "\033[41m"
-#define BG_GRN "\033[42m"
-#define BG_YEL "\033[43m"
-#define BG_BLU "\033[44m"
-#define BG_MAG "\033[45m"
-#define BG_CYN "\033[46m"
-#define BG_WHT "\033[47m"
-
-#define COLOR_BLK 0
-#define COLOR_RED 1
-#define COLOR_GRN 2
-#define COLOR_YEL 3
-#define COLOR_BLU 4
-#define COLOR_MAG 5
-#define COLOR_CYN 6
-#define COLOR_WHT 7
-#define COLOR_GRY 60
-#define COLOR_LRD 61
-
-#define CH_ESCAPE '\033'
-#define CH_SEQSTART '['
+#define COLOR_BLACK 0
+#define COLOR_BLUE  1
+#define COLOR_GREEN 2
+#define COLOR_CYAN  3
+#define COLOR_RED   4
+#define COLOR_MAGNT 5
+#define COLOR_BROWN 6
+#define COLOR_DGRAY 7
+#define COLOR_GRAY  8
+#define COLOR_LBLUE 9
+#define COLOR_LGREN 10
+#define COLOR_LCYAN 11
+#define COLOR_LRED  12
+#define COLOR_LMGNT 13
+#define COLOR_YELLO 14
+#define COLOR_WHITE 15
 
 #define AD_UNUSED_PARAMETER(param) ((void)(param))
 
-#define AD_CURSOR_U     0x001b5b41
-#define AD_CURSOR_D     0x001b5b42
-#define AD_CURSOR_L     0x001b5b44
-#define AD_CURSOR_R     0x001b5b43
+#define AD_KEY_ESC      0xFFFFFF1b
+#define AD_KEY_ENTER    0xFFFFFF0d
 
-#define AD_PAGE_U       0x1b5b357e
-#define AD_PAGE_D       0x1b5b367e
+#define AD_KEY_PGUP     0xFFFFFF49
+#define AD_KEY_PGDN     0xFFFFFF51
 
-#define AD_KEY_ENTER    0x0000000a
-#define AD_KEY_ESCAPE   0x00001b1b
-#define AD_KEY_ESCAPE2  0x0000001b
+#define AD_KEY_UP       0xFFFFFF48
+#define AD_KEY_DOWN     0xFFFFFF50
+#define AD_KEY_LEFT     0xFFFFFF4B
+#define AD_KEY_RIGHT    0xFFFFFF4D
+
+#define AD_TEXT_ELEMENT_SIZE 256
 
 #define AD_CONTENT_MARGIN_H 2
 #define AD_CONTENT_MARGIN_V 1
@@ -82,6 +61,10 @@
 
 #define AD_FOOTER_TEXTFILEBOX       "Use Cursor UP / DOWN or Page UP / DOWN to navigate the text."
 
+/* Macros */
+
+#define AD_UNUSED_PARAMETER(param) ((void)(param))
+
 #define AD_RETURN_ON_NULL(ptr, return_value) if (ptr == NULL) { printf("ERROR - '" #ptr "' is NULL! Result = '" #return_value "'\r\n"); return return_value; }
 
 #define AD_MIN(a,b) (((a)<(b))?(a):(b))
@@ -91,23 +74,81 @@
 
 #define AD_ROUND_HACK_WTF(type, x) ((type)((x) + 0.5))
 
-typedef struct {
-    uint16_t width;
-    uint16_t height;
-    uint8_t  headerBg;
-    uint8_t  headerFg;
-    uint8_t  titleBg;
-    uint8_t  titleFg;
-    uint8_t  footerBg;
-    uint8_t  footerFg;
-    uint8_t  objectBg;
-    uint8_t  objectFg;
-    uint8_t  progressBlank;
-    uint8_t  progressFill;
-    uint8_t  backgroundFill;
-} ad_ConsoleConfig;
+/* Structures */
 
-extern ad_ConsoleConfig ad_s_con;
+typedef struct {
+    char                text[AD_TEXT_ELEMENT_SIZE];
+} ad_TextElement;
+
+typedef struct {
+    size_t              lineCount;
+    ad_TextElement     *lines;
+} ad_MultiLineText;
+
+typedef struct {
+    uint16_t            x;
+    uint16_t            y;
+    uint16_t            width;
+    uint16_t            height;
+    ad_TextElement      title;
+    ad_TextElement      footer;
+} ad_Object;
+
+struct ad_TextFileBox {
+    ad_Object           object;
+    uint16_t            textX;
+    uint16_t            textY;
+    uint16_t            lineWidth;
+    int32_t             linesOnScreen;
+    int32_t             currentIndex;
+    int32_t             highestIndex;
+    ad_MultiLineText   *lines;
+};
+
+struct ad_ProgressBox {
+    ad_Object           object;
+    uint32_t            progress;
+    uint32_t            outOf;
+    uint16_t            boxX;
+    uint16_t            currentX;
+    uint16_t            boxY;
+    uint16_t            boxWidth;
+    ad_MultiLineText   *prompt;
+};
+
+struct ad_Menu {
+    ad_Object           object;
+    bool                cancelable;
+    bool                hasToScroll;
+    uint32_t            selectedIndex;
+    uint16_t            width;
+    uint16_t            height;
+    uint16_t            itemX;
+    uint16_t            itemY;
+    uint16_t            itemWidth;
+    size_t              currentSelection;
+    size_t              itemCount;
+    ad_MultiLineText   *prompt;
+    ad_TextElement     *items;
+};
+
+struct ad_ConsoleConfig {
+    uint16_t            width;
+    uint16_t            height;
+    uint8_t             headerBg;
+    uint8_t             headerFg;
+    uint8_t             titleBg;
+    uint8_t             titleFg;
+    uint8_t             footerBg;
+    uint8_t             footerFg;
+    uint8_t             objectBg;
+    uint8_t             objectFg;
+    uint8_t             progressBlank;
+    uint8_t             progressFill;
+    uint8_t             backgroundFill;
+};
+
+extern struct ad_ConsoleConfig ad_s_con;
 
 void                ad_objectInitialize                 (ad_Object *obj, size_t contentWidth, size_t contentHeight);
 void                ad_objectPaint                      (ad_Object *obj);
@@ -136,12 +177,6 @@ void                ad_printCenteredText                (const char *str, uint16
 
 void                ad_drawBackground                   (const char *title);
 void                ad_fill                             (size_t length, char fill, uint16_t x, uint16_t y, uint8_t colBg, uint8_t colFg);
-
-void                ad_setColor                         (uint8_t bg, uint8_t fg);
-void                ad_flush                            (void);
-void                ad_setCursorPosition                (uint16_t x, uint16_t y);
 size_t              ad_getPadding                       (size_t totalLength, size_t lengthToPad);
-
-int32_t             ad_getKey                           (void);
 
 #endif

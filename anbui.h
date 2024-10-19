@@ -67,7 +67,7 @@ int32_t         ad_okBox                (const char *title, bool cancelable, con
 /*  Creates a Progress-bar display box with the given title and prompt.
     maxProgress is the maximum progress value, i.e. the progress value that yields a filled bar.
     Must be deallocated with ad_progressBoxDestroy. */
-ad_ProgressBox *ad_progressBoxCreate    (const char *title, const char *prompt, uint32_t maxProgress);
+ad_ProgressBox *ad_progressBoxCreate    (const char *title, uint32_t maxProgress, const char *prompt, ...);
 /*  Updates the progress box with the given progress value. The fill level is calculated as progress-out-of-maxProgress. */
 void            ad_progressBoxUpdate    (ad_ProgressBox *pb, uint32_t progress);
 /*  Deallocates the progress box */

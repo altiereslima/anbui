@@ -61,10 +61,9 @@ int main(int argc, char *argv[]) {
     ad_menuDestroy(menu);
 
     /* Test Progress Box */
-    prog = ad_progressBoxCreate("Vorwaerts immer, Rueckwaerts nimmer",
+    prog = ad_progressBoxCreate("Vorwaerts immer, Rueckwaerts nimmer", 10,
         "Please wait while we burger your cheese.\n"
-        "Also: Burgering can not be tasted.",
-        10);
+        "Also: Burgering can not be tasted.");
 
     for (i = 0; i <= 10; i++) {
         ad_progressBoxUpdate(prog, i);

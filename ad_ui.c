@@ -231,18 +231,24 @@ static bool ad_progressBoxPaint(ad_ProgressBox *pb) {
     return true;
 }
 
-ad_ProgressBox *ad_progressBoxCreate(const char *title, const char *prompt, uint32_t maxProgress) {
+ad_ProgressBox *ad_progressBoxCreate(const char *title, uint32_t maxProgress, const char *promptFormat, ...) {
     ad_ProgressBox *pb = NULL;
+    char tmpPrompt[1024];
+    va_list args;
 
     AD_RETURN_ON_NULL(title, NULL);
-    AD_RETURN_ON_NULL(prompt, NULL);
+    AD_RETURN_ON_NULL(promptFormat, NULL);
     pb = calloc(1, sizeof(ad_ProgressBox));
     AD_RETURN_ON_NULL(pb, NULL);
+
+    va_start(args, promptFormat);
+    vsnprintf(tmpPrompt, sizeof(tmpPrompt), promptFormat, args);
+    va_end(args);
 
     pb->progress = 0;
     pb->outOf = maxProgress;
 
-    pb->prompt = ad_multiLineTextCreate(prompt);
+    pb->prompt = ad_multiLineTextCreate(tmpPrompt);
     ad_textElementAssign(&pb->object.title, title);
     
     ad_progressBoxPaint(pb);

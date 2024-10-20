@@ -43,7 +43,8 @@
 #define PL_LINUX_KEY_ESCAPE2  0x0000001b
 
 static struct termios s_originalTermios;
-static uint8_t colorLookup[] = { 0, 4, 2, 6, 1, 5, 3, 7, 60, 64, 62, 66, 61, 65, 63, 7 };
+static const uint8_t colorLookup[]     = { 0, 4, 2, 6, 1, 5, 3, 7, 0, 4, 2, 6, 1, 5, 3, 7 };
+static const uint8_t attributeLookup[] = { 22, 22, 22, 22, 22, 22, 22, 22, 1, 1, 1, 1, 1, 1, 1, 1 };
 
 void ad_initConsole(ad_ConsoleConfig *cfg) {
     struct winsize w;
@@ -76,7 +77,8 @@ void ad_deinitConsole(void) {
 }
 
 inline void ad_setColor(uint8_t bg, uint8_t fg) {
-    printf("\033[%u;%um", colorLookup[bg] + 40, colorLookup[fg] + 30);
+    AD_UNUSED_PARAMETER(attributeLookup);
+    printf("\033[%u;%um\033[%u;%um", 0, colorLookup[bg] + 40, attributeLookup[fg], colorLookup[fg] + 30);
 }
 
 inline void ad_setCursorPosition(uint16_t x, uint16_t y) { 

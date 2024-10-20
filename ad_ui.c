@@ -445,7 +445,7 @@ int32_t ad_textFileBox(const char *title, const char *fileName) {
     return ret;
 }
 
-#if defined(_POSIX_C_SOURCE) || defined(popen)
+#if defined(AD_HAL_HAS_POPEN)
 
 static void ad_commandBoxRedraw(const ad_TextElement *lines, size_t lineCount, uint16_t contentWidth, size_t index, uint16_t x, uint16_t y) {
     size_t curLine;
@@ -507,6 +507,8 @@ int32_t ad_runCommandBox(const char *title, const char *command) {
     return WEXITSTATUS(pclose(pipe));
 }
 #else
+
+#error _POSIX_C_SOURCE
 int32_t ad_runCommandBox(const char *title, const char *command) {
     AD_UNUSED_PARAMETER(title);
     AD_UNUSED_PARAMETER(command);

@@ -173,7 +173,7 @@ int32_t ad_menuExecuteDirectly(const char *title, bool cancelable, size_t option
 }
 
 int32_t ad_yesNoBox(const char *title, bool cancelable, const char *promptFormat, ...) {
-    const char *options[] = {"Yes", "No"};
+    const char *options[] = {"Sim", "Não"};
     char tmpPrompt[1024];
     va_list args;
     va_start(args, promptFormat);

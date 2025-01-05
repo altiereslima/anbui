@@ -56,16 +56,16 @@
 
 #define AD_MENU_ITEM_PADDING_H 2
 
-#define AD_FOOTER_MENU              "Make a selection (ENTER = Select)"
-#define AD_FOOTER_MENU_CANCELABLE   "Make a selection (ENTER = Select, ESC = cancel)"
+#define AD_FOOTER_MENU              "Faça uma seleção (ENTER = Selecionar)"
+#define AD_FOOTER_MENU_CANCELABLE   "Faça uma seleção (ENTER = Selecionar, ESC = cancelar)"
 
-#define AD_FOOTER_TEXTFILEBOX       "Use Cursor UP / DOWN or Page UP / DOWN to navigate the text."
+#define AD_FOOTER_TEXTFILEBOX       "Use as setas CIMA / BAIXO ou PAGE UP / DOWN para navegar no texto."
 
 /* Macros */
 
 #define AD_UNUSED_PARAMETER(param) ((void)(param))
 
-#define AD_RETURN_ON_NULL(ptr, return_value) if (ptr == NULL) { printf("ERROR - '" #ptr "' is NULL! Result = '" #return_value "'\r\n"); return return_value; }
+#define AD_RETURN_ON_NULL(ptr, return_value) if (ptr == NULL) { printf("ERRO - '" #ptr "' is NULL! Resultado = '" #return_value "'\r\n"); return return_value; }
 
 #define AD_MIN(a,b) (((a)<(b))?(a):(b))
 #define AD_MAX(a,b) (((a)>(b))?(a):(b))
